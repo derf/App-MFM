@@ -5,14 +5,24 @@ use 5.010;
 
 use App::MFM::PluginLoader;
 use Curses::UI;
+use Config::Tiny;
 use Cwd;
+use File::BaseDir qw(config_files);
 
 our $VERSION = '0.00';
 
 my ( $cui, $win, $listbox );
-my $plugin = App::MFM::PluginLoader->new();
+my $conf;
 my %cursor_ids;
 
+if (config_files('mfm/main')) {
+	$conf = Config::Tiny->read(config_files('mfm/main'));
+}
+else {
+	$conf = Config::Tiny->new();
+}
+
+my $plugin = App::MFM::PluginLoader->new();
 $plugin->load('Filetype');
 
 sub ls {
@@ -91,11 +101,9 @@ $listbox = $win->add(
 	-onchange => sub     { change_list( $_[0] ) },
 );
 
-$listbox->set_binding( 'option-select',   'n' );
-$listbox->set_binding( 'option-next',     't' );
-$listbox->set_binding( 'option-prev',     'h' );
-$listbox->set_binding( 'option-nextpage', 'T' );
-$listbox->set_binding( 'option-prevpage', 'H' );
+while (my ($opt, $key) = each(%{ $conf->{keys} } ) ) {
+	$listbox->set_binding($opt, $key);
+}
 
 $listbox->focus();
 
