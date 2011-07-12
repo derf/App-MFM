@@ -1,0 +1,123 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use 5.010;
+
+use Curses::UI;
+use Cwd;
+
+my ($cui, $win, $listbox);
+my @all;
+my %cursor_ids;
+
+sub ls {
+	my ($dir) = @_;
+	my @ret;
+
+	if (not -d $dir) {
+		return ();
+	}
+
+	opendir(my $dh, $dir) or die("Cannot open ${dir}: $!\n");
+
+	@ret = grep { $_ !~ / ^ \. /x } readdir($dh);
+
+	closedir($dh);
+
+	@ret = sort { lc($a) cmp lc($b) } @ret;
+	return(@ret);
+}
+
+sub get_selected {
+	my (@files) = @_;
+	my $ret;
+
+	for my $file (@files) {
+		if (-d $file) {
+			$ret->{$file} = "/ ${file}";
+		}
+		else {
+			$ret->{$file} = "  ${file}";
+		}
+	}
+	return $ret;
+}
+
+sub change_list {
+	my ($list) = @_;
+	my $sel = $list->get();
+	my $id = $list->id();
+
+	$cursor_ids{ getcwd() } = $id;
+
+	if (-d $sel) {
+		$list->clear_selection();
+		chdir($sel);
+	}
+
+	$win->title(getcwd());
+	$list->values('..', ls('.'));
+	$list->labels(get_selected(ls('.')));
+	$list->draw();
+
+	if ($cursor_ids { getcwd() }) {
+		for (1 .. $cursor_ids { getcwd() }) {
+			$list->option_next();
+		}
+	}
+}
+
+$cui = Curses::UI->new(
+	-clear_on_exit => 1,
+);
+
+$cui->set_binding(sub { exit 0 }, 'q');
+
+$win = $cui->add(
+	'0', 'Window',
+	-title => getcwd(),
+	-border => 1,
+);
+
+$listbox = $win->add(
+	'foo', 'Listbox',
+	-values => ['..', ls('.')],
+	-labels => get_selected(ls('.')),
+	-onchange => sub { change_list($_[0]) },
+);
+
+$listbox->set_binding('option-select', 'n');
+$listbox->set_binding('option-next', 't');
+$listbox->set_binding('option-prev', 'h');
+$listbox->set_binding('option-nextpage', 'T');
+$listbox->set_binding('option-prevpage', 'H');
+
+$listbox->focus();
+
+$cui->mainloop();
+
+__END__
+
+=head1 NAME
+
+=head1 SYNOPSIS
+
+=head1 DESCRIPTION
+
+=head1 OPTIONS
+
+=head1 EXIT STATUS
+
+=head1 CONFIGURATION
+
+=head1 DEPENDENCIES
+
+=head1 BUGS AND LIMITATIONS
+
+=head1 AUTHOR
+
+Copyright (C) 2010 by Daniel Friesel E<lt>derf@finalrewind.orgE<gt>
+
+=head1 LICENSE
+
+  0. You just DO WHAT THE FUCK YOU WANT TO.
