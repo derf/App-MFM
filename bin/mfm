@@ -3,11 +3,16 @@ use strict;
 use warnings;
 use 5.010;
 
-use App::MFM::PluginLoader;
 use Curses::UI;
 use Config::Tiny;
 use Cwd;
 use File::BaseDir qw(config_files);
+use Module::Pluggable::Object;
+
+my $plugin_loader = Module::Pluggable::Object->new(
+	search_path => ['App::MFM::Plugin'],
+	instantiate => 'new'
+);
 
 our $VERSION = '0.00';
 
@@ -22,8 +27,7 @@ else {
 	$conf = Config::Tiny->new();
 }
 
-my $plugin = App::MFM::PluginLoader->new();
-$plugin->load('Filetype');
+my @plugins = $plugin_loader->plugins();
 
 sub ls {
 	my ($dir) = @_;
@@ -50,9 +54,8 @@ sub annotate {
 	for my $file (@files) {
 		my $desc = q{};
 
-		for my $loaded ( $plugin->loaded_plugins ) {
-			$desc .= $plugin->run( $loaded, $file )
-			  // q{ } x $plugin->plugin($loaded)->short_width;
+		for my $plugin (@plugins) {
+			$desc .= $plugin->run($file) // q{ } x $plugin->short_width;
 		}
 		$ret->{"$file"} = sprintf( '%s %s', $desc, $file );
 	}
