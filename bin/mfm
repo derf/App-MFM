@@ -15,8 +15,8 @@ my ( $cui, $win, $listbox );
 my $conf;
 my %cursor_ids;
 
-if (config_files('mfm/main')) {
-	$conf = Config::Tiny->read(config_files('mfm/main'));
+if ( config_files('mfm/main') ) {
+	$conf = Config::Tiny->read( config_files('mfm/main') );
 }
 else {
 	$conf = Config::Tiny->new();
@@ -51,9 +51,10 @@ sub annotate {
 		my $desc = q{};
 
 		for my $loaded ( $plugin->loaded_plugins ) {
-			$desc .= $plugin->run( $loaded, $file ) // q{};
+			$desc .= $plugin->run( $loaded, $file )
+			  // q{ } x $plugin->plugin($loaded)->short_width;
 		}
-		$ret->{"$file"} = sprintf( '%-7s %s', $desc, $file );
+		$ret->{"$file"} = sprintf( '%s %s', $desc, $file );
 	}
 	return $ret;
 }
@@ -101,8 +102,8 @@ $listbox = $win->add(
 	-onchange => sub     { change_list( $_[0] ) },
 );
 
-while (my ($opt, $key) = each(%{ $conf->{keys} } ) ) {
-	$listbox->set_binding($opt, $key);
+while ( my ( $opt, $key ) = each( %{ $conf->{keys} } ) ) {
+	$listbox->set_binding( $opt, $key );
 }
 
 $listbox->focus();

@@ -40,6 +40,12 @@ sub loaded_plugins {
 	return @list;
 }
 
+sub plugin {
+	my ($self, $name) = @_;
+
+	return $self->{plugin}->{$name};
+}
+
 sub run {
 	my ( $self, $name, @opt ) = @_;
 
