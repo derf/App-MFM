@@ -3,94 +3,99 @@ use strict;
 use warnings;
 use 5.010;
 
+use App::MFM::PluginLoader;
 use Curses::UI;
 use Cwd;
 
-my ($cui, $win, $listbox);
-my @all;
+our $VERSION = '0.00';
+
+my ( $cui, $win, $listbox );
+my $plugin = App::MFM::PluginLoader->new();
 my %cursor_ids;
+
+$plugin->load('Filetype');
 
 sub ls {
 	my ($dir) = @_;
 	my @ret;
 
-	if (not -d $dir) {
+	if ( not -d $dir ) {
 		return ();
 	}
 
-	opendir(my $dh, $dir) or die("Cannot open ${dir}: $!\n");
+	opendir( my $dh, $dir ) or die("Cannot open ${dir}: $!\n");
 
-	@ret = grep { $_ !~ / ^ \. /x } readdir($dh);
+	@ret = grep { $_ !~ / ^ [.] /x } readdir($dh);
 
 	closedir($dh);
 
 	@ret = sort { lc($a) cmp lc($b) } @ret;
-	return(@ret);
+	return (@ret);
 }
 
-sub get_selected {
+sub annotate {
 	my (@files) = @_;
 	my $ret;
 
 	for my $file (@files) {
-		if (-d $file) {
-			$ret->{$file} = "/ ${file}";
+		my $desc = q{};
+
+		for my $loaded ( $plugin->loaded_plugins ) {
+			$desc .= $plugin->run( $loaded, $file ) // q{};
 		}
-		else {
-			$ret->{$file} = "  ${file}";
-		}
+		$ret->{"$file"} = sprintf( '%-7s %s', $desc, $file );
 	}
 	return $ret;
 }
 
 sub change_list {
 	my ($list) = @_;
-	my $sel = $list->get();
-	my $id = $list->id();
+	my $sel    = $list->get();
+	my $id     = $list->id();
 
 	$cursor_ids{ getcwd() } = $id;
 
-	if (-d $sel) {
+	if ( -d $sel ) {
 		$list->clear_selection();
 		chdir($sel);
 	}
 
-	$win->title(getcwd());
-	$list->values('..', ls('.'));
-	$list->labels(get_selected(ls('.')));
+	$win->title( getcwd() );
+	$list->values( '..', ls('.') );
+	$list->labels( annotate( ls('.') ) );
 	$list->draw();
 
-	if ($cursor_ids { getcwd() }) {
-		for (1 .. $cursor_ids { getcwd() }) {
+	if ( $cursor_ids{ getcwd() } ) {
+		for ( 1 .. $cursor_ids{ getcwd() } ) {
 			$list->option_next();
 		}
 	}
+
+	return;
 }
 
-$cui = Curses::UI->new(
-	-clear_on_exit => 1,
-);
+$cui = Curses::UI->new( -clear_on_exit => 1, );
 
-$cui->set_binding(sub { exit 0 }, 'q');
+$cui->set_binding( sub { exit 0 }, 'q' );
 
 $win = $cui->add(
 	'0', 'Window',
-	-title => getcwd(),
+	-title  => getcwd(),
 	-border => 1,
 );
 
 $listbox = $win->add(
 	'foo', 'Listbox',
-	-values => ['..', ls('.')],
-	-labels => get_selected(ls('.')),
-	-onchange => sub { change_list($_[0]) },
+	-values   => [ '..', ls('.') ],
+	-labels   => annotate( ls('.') ),
+	-onchange => sub     { change_list( $_[0] ) },
 );
 
-$listbox->set_binding('option-select', 'n');
-$listbox->set_binding('option-next', 't');
-$listbox->set_binding('option-prev', 'h');
-$listbox->set_binding('option-nextpage', 'T');
-$listbox->set_binding('option-prevpage', 'H');
+$listbox->set_binding( 'option-select',   'n' );
+$listbox->set_binding( 'option-next',     't' );
+$listbox->set_binding( 'option-prev',     'h' );
+$listbox->set_binding( 'option-nextpage', 'T' );
+$listbox->set_binding( 'option-prevpage', 'H' );
 
 $listbox->focus();
 
