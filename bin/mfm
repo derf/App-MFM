@@ -56,6 +56,7 @@ sub annotate {
 
 		for my $plugin (@plugins) {
 			$desc .= $plugin->run($file) // q{ } x $plugin->short_width;
+			$desc .= q{ };
 		}
 		$ret->{"$file"} = sprintf( '%s %s', $desc, $file );
 	}
